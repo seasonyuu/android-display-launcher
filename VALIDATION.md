@@ -65,3 +65,9 @@ vivo 专用测试要求车联功能已经启用，并存在相应三个逻辑屏
 - 未做严格帧耗时基准、完整 StrictMode 自动化或像素级滚动位置断言。
 
 原始设备转储、截图和本机测试日志不随源码发布。README 截图来自模拟器。
+
+## Git 版本与自动发布
+
+本地验证：Git 版本解析 6 项测试、应用 18 项单元测试、Debug/Release 构建和 Lint 通过；actionlint 检查通过。两个构建的签名证书指纹一致，在 API 36 模拟器执行 Debug → Release → Debug 覆盖安装成功，私有目录测试文件保留。无签名凭据时编译/单元测试/Lint 通过，APK 打包按预期明确失败。连续执行 versionInfo 可复用配置缓存。
+
+主分支 CI 与 tag Release 的实时结果以 GitHub Actions 为准。签名只保存在仓库外和 Actions Secrets 中；不得提交 keystore、密码或运行器临时签名目录。

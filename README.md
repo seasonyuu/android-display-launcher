@@ -46,7 +46,9 @@ Display Launcher 是基于 Shizuku 的第三方 Android 多屏应用启动工具
 
 ## 安装与使用
 
-当前请按下文从源码构建并安装 Debug APK。仓库不提交构建产物；可下载版本如有发布，将放在 [GitHub Releases](https://github.com/seasonyuu/android-display-launcher/releases)。
+正式版从 [GitHub Releases](https://github.com/seasonyuu/android-display-launcher/releases) 下载，安装附件中的 `DisplayLauncher-<版本>-release.apk`。每次发布同时提供 `SHA256SUMS` 和 `version.json`，用于核对文件、版本、提交及签名指纹。
+
+主分支的 Debug 构建可在 [Android CI](https://github.com/seasonyuu/android-display-launcher/actions/workflows/ci.yml) 成功运行的 Artifacts 中下载，保留 14 天；PR 仅检查代码，不提供 APK。仓库为私有时，下载需要仓库访问权限。
 
 1. 安装 APK，并启动 Shizuku。
 2. 打开 Display Launcher，点击 **连接 / 授权**，允许使用 Shizuku。
@@ -86,14 +88,14 @@ Display Launcher 向系统发起启动请求，不会创建虚拟屏，也不会
 
 ### 环境
 
-- JDK 21。
+- JDK 21 和 Git；需完整克隆仓库及 tags，不支持浅克隆或无 Git 元数据的源码 ZIP。
 - Android SDK Platform 36，以及 Android SDK Platform-Tools。
 - 使用仓库内的 Gradle Wrapper，无需单独安装 Gradle。
 
-在 Android Studio 中打开项目，或配置 `ANDROID_HOME` / 本地 `local.properties` 中的 `sdk.dir`，然后在项目根目录执行：
+在 Android Studio 中打开项目，或配置 `ANDROID_HOME` / 本地 `local.properties` 中的 `sdk.dir`，先按下文配置本机签名，再在项目根目录执行：
 
 ```sh
-./gradlew :app:assembleDebug
+./gradlew :app:assembleDebug --no-configuration-cache
 ```
 
 输出 APK：
@@ -108,11 +110,63 @@ app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Windows 使用 `gradlew.bat`。连接多台设备时，为 adb 命令添加 `-s <设备序列号>`。如需发布 Release APK，请自行配置签名；仓库未配置发布签名。
+Windows 使用 `gradlew.bat`。连接多台设备时，为 adb 命令添加 `-s <设备序列号>`。Release 使用同一套签名配置，可运行 `./gradlew :app:assembleRelease --no-configuration-cache` 构建。
+
+### Git 版本
+
+主应用和测试目标的版本均来自 Git：
+
+- 正式 tag 格式为 `vX.Y.Z`，干净工作区位于该 tag 时版本名为 `X.Y.Z`。
+- tag 后的开发提交形如 `0.1.0-dev.3+gabc1234`；首次 tag 前以 `0.1.0` 为基线。
+- Debug 增加 `-debug` 后缀；未提交的本地修改标记为 `-dirty`。
+- `versionCode` 等于完整历史的提交总数。禁止移动已发布 tag 或重写发布分支历史，正式发布的版本与 versionCode 均须递增。
+- 使用 `./gradlew versionInfo` 查看版本，机器可读信息输出到 `build/version.json`。自定义 ValueSource 会使配置缓存感知 Git 版本变化。
+
+### 本机签名
+
+Debug 和 Release 均保持 `me.seasonyuu.displaylauncher` 包名，使用同一套签名。项目维护者的签名保存在仓库外：
+
+```text
+~/.android/keystores/android-display-launcher/release.jks
+~/.android/keystores/android-display-launcher/signing.properties
+```
+
+签名配置格式（请替换为自己的值，不要提交到仓库）：
+
+```properties
+storeFile=/absolute/path/to/release.jks
+storePassword=<keystore password>
+keyAlias=display-launcher
+keyPassword=<key password>
+```
+
+也可通过 `SIGNING_PROPERTIES_FILE` 指定配置文件。CI 使用 `RELEASE_KEYSTORE_FILE`、`RELEASE_STORE_PASSWORD`、`RELEASE_KEY_ALIAS`、`RELEASE_KEY_PASSWORD` 环境变量，优先级高于本机配置。
+
+贡献者可以使用 `keytool -genkeypair -keystore release.jks -storetype JKS -alias display-launcher -keyalg RSA -keysize 4096 -validity 10000` 交互生成自己的签名；这不会取得官方安装包的升级身份。仅运行编译、单元测试和 Lint 不需要签名，打包 APK 时缺少配置则明确报错。签名构建请使用 `--no-configuration-cache`，不要上传本机 Gradle 缓存。
+
+维护者应离线备份 keystore 和密码；丢失后无法继续以同一签名更新已安装的应用。新签名无法覆盖早期默认调试签名的安装包，首次切换需要卸载旧包；此后的统一签名 Debug/Release 可相互覆盖安装，但不能直接安装较低 versionCode。
+
+### 自动构建与发布
+
+- `Android CI`：main 推送、面向 main 的 PR、手动触发。运行 Git 版本测试、应用单元测试、编译与 Lint；只有 main 构建使用签名并上传 Debug APK。手动签名构建也仅允许 main。
+- `Tagged Release`：推送 `v*` tag 后验证严格版本格式、main 历史归属和递增版本，测试通过后构建 Release。使用草稿上传 APK、校验文件和版本元数据，最后发布；不覆盖已发布版本。
+- 云端不运行依赖 Shizuku 或 vivo 车联环境的设备测试。
+
+仓库需要配置 `RELEASE_KEYSTORE_BASE64`、`RELEASE_STORE_PASSWORD`、`RELEASE_KEY_ALIAS`、`RELEASE_KEY_PASSWORD` 四项 Actions Secrets。密钥只提供给可信的主分支和 tag 构建；PR 不读取签名。Release 通过 `GITHUB_TOKEN` 发布，不需要额外 PAT。
+
+发布前，确认 main 的 CI 成功，再为对应提交创建 annotated tag 并推送（以下为后续版本示例）：
+
+```sh
+git tag -a v0.1.1 <已验证的提交SHA> -m "Display Launcher v0.1.1"
+git push origin v0.1.1
+```
+
+已发布 Release 禁止自动替换；失败留下的同提交草稿允许重跑恢复。请在 Actions 中检查任务结果，并核对 Release 的 APK 和签名指纹。
 
 ### 检查与测试
 
 ```sh
+./gradlew -p buildSrc test
 ./gradlew :app:testDebugUnitTest :app:lintDebug
 ```
 

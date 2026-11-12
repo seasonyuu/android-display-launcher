@@ -1,4 +1,6 @@
 plugins { alias(libs.plugins.android.application) }
+val gitVersion = rootProject.extra["gitVersion"] as List<*>
+
 android {
     namespace = "me.seasonyuu.displaylauncher.fixture"
     compileSdk = 36
@@ -6,8 +8,8 @@ android {
         applicationId = "me.seasonyuu.displaylauncher.fixture"
         minSdk = 30
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = gitVersion[0].toString().toInt()
+        versionName = gitVersion[1].toString()
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

@@ -12,3 +12,7 @@ local.properties
 *.aab
 *.jks
 *.keystore
+
+# CI staging and local signing credentials
+/dist/
+**/signing.properties
