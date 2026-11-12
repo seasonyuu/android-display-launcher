@@ -27,10 +27,10 @@ Display Launcher 是基于 Shizuku 的第三方 Android 多屏应用启动工具
 
 <p>
   <img src="docs/images/home.png" width="300" alt="首页：屏幕选择、应用搜索与最近使用">
-  <img src="docs/images/settings.png" width="300" alt="设置页：最近使用数量">
+  <img src="docs/images/display-preview.png" width="300" alt="模拟屏幕预览：横屏与竖屏的等比示意图">
 </p>
 
-截图来自测试环境，应用列表和屏幕信息以实际设备为准。
+截图来自测试环境，应用列表和屏幕信息以实际设备为准。模拟屏幕无法获取快照时，会按实际宽高显示等比示意图。
 
 </details>
 
