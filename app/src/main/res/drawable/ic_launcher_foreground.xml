@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated transparent artwork; inset keeps the symbol inside adaptive masks. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:inset="6dp">
+    <bitmap android:src="@drawable/ic_launcher_art"
+        android:gravity="fill"
+        android:filter="true" />
+</inset>

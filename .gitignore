@@ -1,0 +1,14 @@
+.gradle/
+.kotlin/
+.idea/
+local.properties
+**/build/
+*.iml
+.DS_Store
+
+# Local delivery files and device diagnostics
+/artifacts/
+*.apk
+*.aab
+*.jks
+*.keystore
