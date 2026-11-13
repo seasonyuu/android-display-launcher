@@ -112,31 +112,6 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 Windows 使用 `gradlew.bat`。连接多台设备时，为 adb 命令添加 `-s <设备序列号>`。Release 可运行 `./gradlew :app:assembleRelease --no-configuration-cache` 构建。
 
-### Git 版本
-
-主应用和测试目标的版本均来自 Git：
-
-- 正式 tag 格式为 `vX.Y.Z`，干净工作区位于该 tag 时版本名为 `X.Y.Z`。
-- tag 后的开发提交形如 `0.1.0-dev.3+gabc1234`；首次 tag 前以 `0.1.0` 为基线。
-- Debug 增加 `-debug` 后缀；未提交的本地修改标记为 `-dirty`。
-- `versionCode` 等于完整历史的提交总数。禁止移动已发布 tag 或重写发布分支历史，正式发布的版本与 versionCode 均须递增。
-- 使用 `./gradlew versionInfo` 查看版本，机器可读信息输出到 `build/version.json`。自定义 ValueSource 会使配置缓存感知 Git 版本变化。
-
-### 自动构建与发布
-
-- `Android CI`：main 推送、面向 main 的 PR、手动触发。运行 Git 版本测试、应用单元测试、编译与 Lint；只有 main 构建上传 Debug APK。手动 APK 构建也仅允许 main。
-- `Tagged Release`：推送 `v*` tag 后验证严格版本格式、main 历史归属和递增版本，测试通过后构建 Release。使用草稿上传 APK、校验文件和版本元数据，最后发布；不覆盖已发布版本。
-- 云端不运行依赖 Shizuku 或 vivo 车联环境的设备测试。
-
-发布前，确认 main 的 CI 成功，再为对应提交创建 annotated tag 并推送（以下为后续版本示例）：
-
-```sh
-git tag -a v0.1.1 <已验证的提交SHA> -m "Display Launcher v0.1.1"
-git push origin v0.1.1
-```
-
-已发布 Release 禁止自动替换；失败留下的同提交草稿允许重跑恢复。请在 Actions 中检查任务结果，并核对 Release 的 APK 和校验文件。
-
 ### 检查与测试
 
 ```sh
