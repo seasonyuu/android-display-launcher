@@ -31,6 +31,7 @@ data class LauncherState(
     val recentApps: List<AppItem> = emptyList(), val recentCount: Int = 3,
     val refreshingApps: Boolean = false, val catalogError: String? = null, val preferencesError: String? = null,
     val previews: Map<Int, Preview> = emptyMap(), val previewRevision: Int = 0, val busy: Boolean = false,
+    val displayUnavailable: Boolean = false,
     val message: String? = null, val diagnostic: String = "尚无启动记录"
 )
 
@@ -192,11 +193,17 @@ class LauncherModel(app: Application, private val savedState: SavedStateHandle) 
             }
         }
     }
+    fun dismissDisplayAlert() { mutable.update { it.copy(displayUnavailable = false) } }
     fun launch(app: AppItem) {
         if (mutable.value.busy) return
-        val display = mutable.value.selected ?: return
+        val display = mutable.value.selected
+        if (display == null || dm.getDisplay(display)?.isValid != true) {
+            refreshDisplays()
+            mutable.update { it.copy(displayUnavailable = true) }
+            return
+        }
         val service = remote ?: return
-        mutable.update { it.copy(busy = true, message = "正在启动 ${app.label}…") }
+        mutable.update { it.copy(busy = true, displayUnavailable = false, message = "正在启动 ${app.label}…") }
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) { runCatching {
                 check(Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) { "Shizuku 授权不可用" }
@@ -209,8 +216,10 @@ class LauncherModel(app: Application, private val savedState: SavedStateHandle) 
                     putInt("user", android.os.Process.myUid() / 100000)
                 })
             }.getOrElse { Bundle().apply { putString("message", it.message ?: "服务连接中断"); putString("status", "failed") } } }
+            val displayUnavailable = result.getString("status") == "failed" && dm.getDisplay(display)?.isValid != true
+            if (displayUnavailable) refreshDisplays()
             val saved = runCatching { repository.recent.record(app, result.getString("status")) }.isSuccess
-            mutable.update { it.copy(busy = false, message = if (saved) result.getString("message") else
+            mutable.update { it.copy(busy = false, displayUnavailable = displayUnavailable, message = if (saved) result.getString("message") else
                 "${result.getString("message")}\n应用已启动，但最近使用未保存", diagnostic =
                 "Android ${Build.VERSION.RELEASE} / API ${Build.VERSION.SDK_INT}\n${app.component}\n目标 display=$display\n状态=${result.getString("status")}\n${result.getString("message")}\n${result.getString("details", "")}") }
         }

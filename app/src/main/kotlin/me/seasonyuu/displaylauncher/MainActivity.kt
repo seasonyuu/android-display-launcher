@@ -137,7 +137,7 @@ fun LauncherScreen(model: LauncherModel) {
                 Spacer(Modifier.height(12.dp))
                 LazyRow(state = recentList, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(state.recentApps, key = { it.component }) { app ->
-                        Card(modifier = Modifier.testTag("recent-${app.component}"), onClick = { model.launch(app) }, enabled = state.ready && target != null && !state.busy) {
+                        Card(modifier = Modifier.testTag("recent-${app.component}"), onClick = { model.launch(app) }, enabled = state.ready && !state.busy) {
                             Column(Modifier.width(92.dp).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                                 AppIcon(model, app)
                                 Spacer(Modifier.height(8.dp))
@@ -156,7 +156,7 @@ fun LauncherScreen(model: LauncherModel) {
             if (state.loadingApps) item { CircularProgressIndicator() }
             if (!state.loadingApps && filtered.isEmpty()) item { Text("未找到匹配的应用") }
             items(filtered, key = { it.component }) { app ->
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable(enabled = state.ready && target != null && !state.busy, role = Role.Button) { model.launch(app) }.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable(enabled = state.ready && !state.busy, role = Role.Button) { model.launch(app) }.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     AppIcon(model, app)
                     Spacer(Modifier.width(16.dp))
                     Column(Modifier.weight(1f)) {
@@ -189,6 +189,17 @@ fun LauncherScreen(model: LauncherModel) {
             if (state.displays.isEmpty()) item { Text("未检测到可用屏幕") }
         }
     }
+    if (state.displayUnavailable) AlertDialog(
+        onDismissRequest = model::dismissDisplayAlert,
+        title = { Text("目标屏幕不可用") },
+        text = { Text("目标屏幕已断开或失效，无法在该屏幕打开应用。请重新选择一个可用屏幕后再试。") },
+        confirmButton = { TextButton(onClick = {
+            model.dismissDisplayAlert()
+            model.refreshDisplays()
+            showDisplays = true
+        }) { Text("选择屏幕") } },
+        dismissButton = { TextButton(onClick = model::dismissDisplayAlert) { Text("取消") } },
+    )
     if (showDiagnostic) AlertDialog(onDismissRequest = { showDiagnostic = false }, title = { Text("启动诊断") }, text = {
         LazyColumn { item { Text(state.diagnostic, style = MaterialTheme.typography.bodySmall) } }
     }, confirmButton = { TextButton(onClick = {
