@@ -11,6 +11,12 @@ data class AppItem(
 object AppSearch {
     fun normalize(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFKC)
         .lowercase(Locale.ROOT).trim()
+    // fields() stores the compact full pinyin at index 2, including in disk snapshots.
+    val alphabeticalOrder: Comparator<AppItem> = compareBy<AppItem>(
+        { it.searchIndex.getOrNull(2)?.takeIf(String::isNotEmpty) ?: normalize(it.label) },
+        { normalize(it.label) },
+        { it.component },
+    )
     fun tokens(query: String): List<String> = normalize(query).split(Regex("\\s+")).filter { it.isNotEmpty() }
     fun matches(app: AppItem, tokens: List<String>): Boolean = tokens.all { token -> app.searchIndex.any { token in it } }
     fun fields(label: String, packageName: String, transliterated: String): List<String> {

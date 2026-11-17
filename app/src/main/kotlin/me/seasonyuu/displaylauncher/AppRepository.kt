@@ -117,7 +117,7 @@ class AppRepository internal constructor(
                 val label = info.loadLabel(pm).toString()
                 AppItem(component, label, pkg, key(component, updated, config),
                     AppSearch.fields(label, pkg, transliterator.transliterate(label)), user)
-            }.distinctBy { it.component }.sortedWith(compareBy({ AppSearch.normalize(it.label) }, { it.component }))
+            }.distinctBy { it.component }.sortedWith(AppSearch.alphabeticalOrder)
     }
     suspend fun loadIcon(app: AppItem): Bitmap? = withContext(Dispatchers.IO) {
         iconMutex.withLock {
@@ -162,7 +162,7 @@ class AppRepository internal constructor(
             val fields = it.getJSONArray("search")
             AppItem(component, it.getString("label"), it.getString("package"), iconKey,
                 (0 until fields.length()).map(fields::getString), user)
-        } }
+        } }.sortedWith(AppSearch.alphabeticalOrder)
     }
     private fun writeSnapshot(apps: List<AppItem>) {
         root.mkdirs()

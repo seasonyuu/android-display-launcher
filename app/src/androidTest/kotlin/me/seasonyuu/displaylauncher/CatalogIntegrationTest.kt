@@ -23,6 +23,29 @@ class CatalogIntegrationTest {
             assertTrue("$query: $latin", AppSearch.matches(app, AppSearch.tokens(query)))
         }
     }
+    @Test fun systemIcuSortsChineseAndEnglishTogether() {
+        val transliterator = Transliterator.getInstance("Han-Latin; Latin-ASCII; Lower")
+        val apps = listOf("支付宝", "相机", "微信", "百度", "阿里", "chrome", "Alipay").map { label ->
+            AppItem("p/.$label", label, "p", "", AppSearch.fields(label, "p", transliterator.transliterate(label)), 0)
+        }
+        assertEquals(listOf("阿里", "Alipay", "百度", "chrome", "微信", "相机", "支付宝"),
+            apps.sortedWith(AppSearch.alphabeticalOrder).map { it.label })
+    }
+    @Test fun cachedCatalogIsResortedEvenWhenRefreshFails() = runBlocking<Unit> {
+        val root = File(context.cacheDir, "catalog-sort-${System.nanoTime()}")
+        var scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        val apps = listOf("微信" to "wei xin", "百度" to "bai du").mapIndexed { index, (label, latin) ->
+            AppItem("p/.App$index", label, "p", "a".repeat(64), AppSearch.fields(label, "p", latin), 0)
+        }
+        try {
+            // Seed a snapshot in the old order through the query test seam.
+            ready(AppRepository(context, scope, root, { apps }, false))
+            scope.cancel(); scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+            val repo = AppRepository(context, scope, root, { error("offline") }, false)
+            val cached = withTimeout(5000) { repo.catalog.first { it.error != null } }
+            assertEquals(listOf("百度", "微信"), cached.apps.map { it.label })
+        } finally { scope.cancel(); root.deleteRecursively() }
+    }
     @Test fun coldDiskCorruptionFailureAndConflatedRefresh() = runBlocking<Unit> {
         val root = File(context.cacheDir, "catalog-test-${System.nanoTime()}")
         var scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)

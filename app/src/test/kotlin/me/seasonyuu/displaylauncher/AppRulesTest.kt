@@ -13,6 +13,18 @@ class AppRulesTest {
         val english = app().copy(searchIndex = AppSearch.fields("Google Chrome", "com.android.chrome", "google chrome"))
         assertTrue(AppSearch.matches(english, AppSearch.tokens("ＣＨＲＯＭＥ android")))
     }
+    @Test fun alphabeticalOrderUsesFullPinyinAcrossChineseAndEnglish() {
+        val names = listOf("支付宝" to "zhi fu bao", "相机" to "xiang ji", "微信" to "wei xin",
+            "百度" to "bai du", "阿里" to "a li", "chrome" to "chrome", "Alipay" to "Alipay")
+        val apps = names.map { (label, latin) ->
+            AppItem("$label/.Main", label, "p", "", AppSearch.fields(label, "p", latin), 0)
+        }
+        assertEquals(listOf("阿里", "Alipay", "百度", "chrome", "微信", "相机", "支付宝"),
+            apps.sortedWith(AppSearch.alphabeticalOrder).map { it.label })
+        val same = app("p/.Z")
+        assertEquals(listOf("p/.A", "p/.Z"), listOf(same, same.copy(component = "p/.A"))
+            .sortedWith(AppSearch.alphabeticalOrder).map { it.component })
+    }
     @Test fun onlyAcceptedLaunchesCount() {
         listOf("confirmed", "unverified", "mismatch").forEach { assertTrue(RecentRules.accepted(it)) }
         listOf("failed", "timeout", "denied", "", null).forEach { assertFalse(RecentRules.accepted(it)) }
