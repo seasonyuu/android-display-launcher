@@ -16,6 +16,47 @@ import org.junit.runner.RunWith
 class LauncherUiTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
+    @Test fun aboutRestoresPageAndReturnsToSearch() {
+        compose.onNodeWithText("搜索应用或包名").performTextInput("about-navigation-query")
+        compose.onNodeWithTag("apps-list").performScrollToNode(hasText("设置"))
+        compose.onNodeWithText("设置").performClick()
+        compose.onNodeWithText("关于").performScrollTo().performClick()
+        val info = compose.activity.packageManager.getPackageInfo(compose.activity.packageName, 0)
+        val version = compose.activity.getString(R.string.about_version, info.versionName, info.longVersionCode)
+        compose.onNodeWithText(version).assertIsDisplayed()
+        compose.activityRule.scenario.recreate()
+        compose.onNodeWithText(version).assertIsDisplayed()
+        compose.onNodeWithText("Copyright 2026 SeasonYuu").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithContentDescription("返回").performClick()
+        compose.onNodeWithText("最近使用数量").assertIsDisplayed()
+        compose.onNodeWithText("关于").performScrollTo().performClick()
+        androidx.test.espresso.Espresso.pressBack()
+        compose.onNodeWithText("最近使用数量").assertIsDisplayed()
+        androidx.test.espresso.Espresso.pressBack()
+        compose.onNodeWithText("about-navigation-query").assertExists()
+    }
+
+    @Test fun aboutLinksUseViewAndHandleMissingBrowser() {
+        val context = compose.activity
+        val expected = listOf(
+            "https://github.com/seasonyuu/android-display-launcher",
+            "https://github.com/seasonyuu/android-display-launcher/issues",
+            "https://github.com/seasonyuu/android-display-launcher/blob/main/LICENSE",
+            "https://shizuku.rikka.app/",
+        )
+        val recorded = mutableListOf<android.content.Intent>()
+        val recordingContext = object : android.content.ContextWrapper(context) {
+            override fun startActivity(intent: android.content.Intent) { recorded.add(intent) }
+        }
+        AboutLink.entries.forEach { assertTrue(openAboutLink(recordingContext, it)) }
+        assertEquals(expected, recorded.map { it.dataString })
+        assertTrue(recorded.all { it.action == android.content.Intent.ACTION_VIEW })
+        val missingBrowser = object : android.content.ContextWrapper(context) {
+            override fun startActivity(intent: android.content.Intent) { throw android.content.ActivityNotFoundException() }
+        }
+        assertFalse(openAboutLink(missingBrowser, AboutLink.Project))
+    }
+
     @Test fun settingsRestoreSearchAndPersistBounds() {
         lateinit var model: LauncherModel
         compose.runOnUiThread { model = ViewModelProvider(compose.activity)[LauncherModel::class.java] }

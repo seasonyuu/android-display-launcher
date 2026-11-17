@@ -10,7 +10,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -18,18 +20,24 @@ import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(state: LauncherState, onBack: () -> Unit, onAdjustCount: (Int) -> Unit, modifier: Modifier = Modifier) {
+fun SettingsScreen(state: LauncherState, onBack: () -> Unit, onAdjustCount: (Int) -> Unit, onOpenAbout: () -> Unit, modifier: Modifier = Modifier) {
     var showCount by rememberSaveable { mutableStateOf(false) }
-    Column(modifier.fillMaxSize()) {
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    Column(modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection)) {
         LargeTopAppBar(
             title = { Text("设置") },
             navigationIcon = {
                 IconButton(onClick = onBack) { Icon(painterResource(R.drawable.ic_arrow_back), "返回") }
             },
             windowInsets = WindowInsets(0, 0, 0, 0),
+            scrollBehavior = scrollBehavior,
+            colors = TopAppBarDefaults.largeTopAppBarColors(
+                containerColor = MaterialTheme.colorScheme.background,
+                scrolledContainerColor = MaterialTheme.colorScheme.background,
+            ),
         )
         Column(
-            Modifier.align(Alignment.CenterHorizontally).widthIn(max = 720.dp).fillMaxWidth()
+            Modifier.weight(1f).align(Alignment.CenterHorizontally).widthIn(max = 720.dp).fillMaxWidth()
                 .verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 24.dp),
         ) {
             Text("应用列表", Modifier.padding(start = 16.dp, bottom = 12.dp),
@@ -46,6 +54,14 @@ fun SettingsScreen(state: LauncherState, onBack: () -> Unit, onAdjustCount: (Int
             Text("仅记录通过本应用启动的应用。调整显示数量不会删除最近使用记录。",
                 Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                ListItem(
+                    modifier = Modifier.clickable(role = Role.Button, onClick = onOpenAbout).padding(vertical = 8.dp),
+                    headlineContent = { Text(stringResource(R.string.about_title)) },
+                    supportingContent = { Text(stringResource(R.string.about_settings_summary)) },
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                )
+            }
             state.preferencesError?.let {
                 Text(it, Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
             }

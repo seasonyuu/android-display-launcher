@@ -57,6 +57,8 @@ class MainActivity : ComponentActivity() {
     override fun onResume() { super.onResume(); model.checkConnection(); model.refreshDisplays(); model.loadApps() }
 }
 
+private enum class LauncherPage { Home, Settings, About }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LauncherScreen(model: LauncherModel) {
@@ -64,11 +66,12 @@ fun LauncherScreen(model: LauncherModel) {
     var query by rememberSaveable { mutableStateOf("") }
     var showDisplays by rememberSaveable { mutableStateOf(false) }
     var showDiagnostic by remember { mutableStateOf(false) }
-    var settings by rememberSaveable { mutableStateOf(false) }
+    var page by rememberSaveable { mutableStateOf(LauncherPage.Home) }
     val homeList = rememberLazyListState()
     val searchList = rememberLazyListState()
     val recentList = rememberLazyListState()
-    BackHandler(settings) { settings = false }
+    val navigateBack = { page = if (page == LauncherPage.About) LauncherPage.Settings else LauncherPage.Home }
+    BackHandler(page != LauncherPage.Home, onBack = navigateBack)
     val target = state.displays.find { it.id == state.selected }
     val tokens = remember(query) { AppSearch.tokens(query) }
     val searching = tokens.isNotEmpty()
@@ -77,13 +80,16 @@ fun LauncherScreen(model: LauncherModel) {
     val packageCounts = remember(state.apps) { state.apps.groupingBy { it.packageName }.eachCount() }
     LaunchedEffect(showDisplays) { model.selector(showDisplays) }
     Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
-        if (settings) {
-            SettingsScreen(state, onBack = { settings = false }, onAdjustCount = model::adjustRecentCount, modifier = Modifier.padding(padding))
+        if (page == LauncherPage.About) {
+            AboutScreen(onBack = navigateBack, modifier = Modifier.padding(padding))
+        } else if (page == LauncherPage.Settings) {
+            SettingsScreen(state, onBack = navigateBack, onAdjustCount = model::adjustRecentCount,
+                onOpenAbout = { page = LauncherPage.About }, modifier = Modifier.padding(padding))
         } else LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("apps-list"), state = if (searching) searchList else homeList, contentPadding = PaddingValues(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text("DISPLAY / LAUNCHER", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                    TextButton(onClick = { settings = true }) { Text("设置") }
+                    TextButton(onClick = { page = LauncherPage.Settings }) { Text("设置") }
                 }
                 Spacer(Modifier.height(8.dp))
                 Text("应用，去你想去的屏幕。", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
